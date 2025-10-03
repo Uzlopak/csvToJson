@@ -1,18 +1,79 @@
 "use strict";
 
-let fileUtils = require("././util/fileUtils");
-let stringUtils = require("././util/stringUtils");
-let jsonUtils = require("././util/jsonUtils");
+const fs = require('fs');
+
+/**
+ * @param {string} fileInputName 
+ * @param {BufferEncoding} encoding 
+ * @returns {string}
+ */
+function readFile(fileInputName, encoding) {
+  return fs.readFileSync(fileInputName, encoding).toString();
+}
+
+/**
+ * @param {string} fileOutputName 
+ * @param {string} json 
+ */
+function writeFile(fileOutputName, json) {
+  fs.writeFileSync(fileOutputName, json, { encoding: 'utf8' });
+}
 
 const encodings = /** @type {const} */ (['utf8', 'ucs2', 'utf16le', 'latin1', 'ascii', 'base64', 'hex'])
 /** @typedef {typeof encodings[number]} BufferEncoding */
 
 const newLineRegex = /\r?\n/;
 
+
+/**
+ * @param {boolean} removeAllWhiteSpace 
+ * @param {string} value 
+ * @returns {string}
+ */
+function trimPropertyName(removeAllWhiteSpace, value) {
+  return removeAllWhiteSpace
+    ? value.replace(/\s/g, '')
+    : value.trim();
+}
+
+/**
+ * @param {string} value 
+ * @returns {string|number|boolean}
+ */
+function getValueFormatByType(value) {
+  if (value === undefined || value === '') {
+    return '';
+  }
+  //is Number
+  if (!isNaN(/** @type {*} */(value))) {
+    return +value;
+  }
+  // is Boolean
+  if (value === "true" || value === "false") {
+    return value === 'true' ? true : false;
+  }
+  return `${value}`;
+}
+
+/**
+ * @param {Array} values 
+ * @returns {boolean}
+ */
+function hasContent(values) {
+  if (values && values.length > 0) {
+    for (let i = 0; i < values.length; i++) {
+      if (values[i]) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * @typedef {object} CsvToJsonOptions
  * @property {string} [delimiter=';'] - The field delimiter which will be used to split the fields
- * @property {string} [encoding='utf8'] - The file encoding
+ * @property {BufferEncoding} [encoding='utf8'] - The file encoding
  * @property {number} [indexHeader=0] - The index where the header is defined
  * @property {boolean} [supportQuotedField=false] - Makes parser aware of quoted fields
  * @property {boolean} [printValueFormatByType=false] - Prints a digit as Number type (for example 32 instead of '32')
@@ -25,6 +86,7 @@ const newLineRegex = /\r?\n/;
 /** @typedef {Array<string>} CSVHeaders */
 
 class CsvToJson {
+  /** @type {BufferEncoding} */
   #encoding;
   /** @type {number} */
 
@@ -161,7 +223,7 @@ class CsvToJson {
       throw new Error("outputFileName is not defined.");
     }
     let jsonStringified = this.getJsonStringifiedFromCsv(fileInputName);
-    fileUtils.writeFile(jsonStringified, fileOutputName);
+    writeFile(fileOutputName, jsonStringified);
   }
 
   /**
@@ -172,7 +234,6 @@ class CsvToJson {
   getJsonStringifiedFromCsv(fileInputName) {
     let json = this.getJsonFromCsv(fileInputName);
     let jsonStringified = JSON.stringify(json, undefined, 1);
-    jsonUtils.validateJson(jsonStringified);
     return jsonStringified;
   }
 
@@ -186,7 +247,7 @@ class CsvToJson {
     if (!fileInputName) {
       throw new Error("inputFileName is not defined.");
     }
-    let parsedCsv = fileUtils.readFile(fileInputName, this.#encoding);
+    let parsedCsv = readFile(fileInputName, this.#encoding);
     return this.#parse(parsedCsv);
   }
 
@@ -212,20 +273,20 @@ class CsvToJson {
     let headers = this.#split(lines[index]);
 
     // Skip empty lines until we find a header
-    while (!stringUtils.hasContent(headers) && index <= lines.length) {
+    while (!hasContent(headers) && index <= lines.length) {
       index = index + 1;
       headers = lines[index].split(delimiter);
     }
 
     for (let i = 0; i < headers.length; i++) {
-      headers[i] = stringUtils.trimPropertyName(this.#shouldTrimHeaderFieldWhiteSpace, headers[i]);
+      headers[i] = trimPropertyName(this.#shouldTrimHeaderFieldWhiteSpace, headers[i]);
       this.#validateHeader(headers[i]);
     }
 
     let jsonResult = [];
     for (let i = (index + 1); i < lines.length; i++) {
       const currentLine = this.#split(lines[i]);
-      if (stringUtils.hasContent(currentLine)) {
+      if (hasContent(currentLine)) {
         jsonResult.push(this.buildJsonResult(headers, currentLine));
       }
     }
@@ -243,7 +304,7 @@ class CsvToJson {
       if (this.#shouldParseValueAsSubArray(currentLine[i])) {
         jsonObject[headers[i]] = this.#parseValueAsSubArray(currentLine[i]);
       } else if (this.#printValueFormatByType) {
-        jsonObject[headers[i]] = stringUtils.getValueFormatByType(currentLine[i]);
+        jsonObject[headers[i]] = getValueFormatByType(currentLine[i]);
       } else {
         jsonObject[headers[i]] = currentLine[i];
       }
@@ -264,7 +325,7 @@ class CsvToJson {
     const result = extractedValues.split(this.#parseSubArraySeparator);
     if (this.#printValueFormatByType) {
       for (let i = 0; i < result.length; i++) {
-        result[i] = stringUtils.getValueFormatByType(result[i]);
+        result[i] = getValueFormatByType(result[i]);
       }
     }
     return result;
@@ -277,7 +338,7 @@ class CsvToJson {
   #shouldParseValueAsSubArray(value) {
     return (
       this.#parseSubArrays &&
-      value !== '' && 
+      value !== '' &&
       value.indexOf(this.#parseSubArrayDelimiter) === 0 &&
       value.lastIndexOf(this.#parseSubArrayDelimiter) === (value.length - 1)
     );
@@ -333,7 +394,7 @@ class CsvToJson {
     if (line.length === 0) {
       return [];
     }
-    
+
     const delimiter = this.#delimiter;
 
     if (this.#supportQuotedField && this.#hasQuotes(line)) {

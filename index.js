@@ -1,6 +1,6 @@
 "use strict";
 
-let csvToJson = require("./src/csvToJson.js");
+let csvToJson = require("./src/csv-to-json.js");
 
 const encodingOps = {
     utf8: 'utf8',
