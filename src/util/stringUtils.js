@@ -2,32 +2,29 @@
 
 class StringUtils {
 
-    trimPropertyName(isTrimHeaderFieldWhiteSpace,value) {
-        if(isTrimHeaderFieldWhiteSpace) {
-            return value.replace(/\s/g, '');
-        }
-        return value.trim();
-        
+    trimPropertyName(removeAllWhiteSpace,value) {
+        return removeAllWhiteSpace
+            ? value.replace(/\s/g, '')
+            : value.trim();
     }
 
     getValueFormatByType(value) {
         if(value === undefined || value === ''){
-            return String();
+            return '';
         }
         //is Number
-        let isNumber = !isNaN(value);
-        if (isNumber) {
-            return Number(value);
+        if (!isNaN(value)) {
+            return +value;
         }
         // is Boolean
         if(value === "true" || value === "false"){
-            return JSON.parse(value.toLowerCase());
+            return value === 'true' ? true : false;
         }
-        return String(value);
+        return `${value}`;
     }
 
     hasContent(values) {
-        if (values.length > 0) {
+        if (values && values.length > 0) {
             for (let i = 0; i < values.length; i++) {
                 if (values[i]) {
                     return true;

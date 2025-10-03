@@ -4,230 +4,385 @@ let fileUtils = require("././util/fileUtils");
 let stringUtils = require("././util/stringUtils");
 let jsonUtils = require("././util/jsonUtils");
 
-const newLine = /\r?\n/;
-const defaultFieldDelimiter = ";";
+const encodings = /** @type {const} */ (['utf8', 'ucs2', 'utf16le', 'latin1', 'ascii', 'base64', 'hex'])
+/** @typedef {typeof encodings[number]} BufferEncoding */
+
+const newLineRegex = /\r?\n/;
+
+/**
+ * @typedef {object} CsvToJsonOptions
+ * @property {string} [delimiter=';'] - The field delimiter which will be used to split the fields
+ * @property {string} [encoding='utf8'] - The file encoding
+ * @property {number} [indexHeader=0] - The index where the header is defined
+ * @property {boolean} [supportQuotedField=false] - Makes parser aware of quoted fields
+ * @property {boolean} [printValueFormatByType=false] - Prints a digit as Number type (for example 32 instead of '32')
+ * @property {boolean} [parseSubArrays=false] - Whether to parse sub arrays
+ * @property {string} [parseSubArrayDelimiter='*'] - The delimiter to identify a sub array
+ * @property {string} [parseSubArraySeparator=','] - The separator to split values in a sub array
+ * @property {boolean} [trimHeaderFieldWhiteSpace=false] - If active the content of the Header Fields is trimmed including the white spaces, e.g. "My Name" -> "MyName"
+ */
+
+/** @typedef {Array<string>} CSVHeaders */
 
 class CsvToJson {
+  #encoding;
+  /** @type {number} */
 
-  formatValueByType(active) {
-    this.printValueFormatByType = active;
+  #indexHeader;
+  /** @type {boolean} */
+
+  #supportQuotedField;
+  /** @type {boolean} */
+
+  #printValueFormatByType;
+
+  /** @type {boolean} */
+  #parseSubArrays;
+
+  /** @type {string} */
+  #parseSubArrayDelimiter;
+
+  /** @type {string} */
+  #parseSubArraySeparator;
+
+  /** @type {string} */
+  #delimiter;
+
+  /** @type {boolean} */
+  #shouldTrimHeaderFieldWhiteSpace;
+
+  /**
+   * @param {CsvToJsonOptions} opts 
+   */
+  constructor(opts = {}) {
+    this.#delimiter = opts.delimiter || ';';
+    this.#encoding = opts.encoding || 'utf8';
+    this.#indexHeader = opts.indexHeader || 0;
+    this.#supportQuotedField = opts.supportQuotedField || false;
+    this.#printValueFormatByType = opts.printValueFormatByType || false;
+    this.#parseSubArrays = opts.parseSubArrays || false;
+    this.#parseSubArrayDelimiter = opts.parseSubArrayDelimiter || '*';
+    this.#parseSubArraySeparator = opts.parseSubArraySeparator || ',';
+    this.#shouldTrimHeaderFieldWhiteSpace = opts.trimHeaderFieldWhiteSpace || false;
+  }
+
+  /**
+   * Prints a digit as Number type (for example 32 instead of '32')
+   * @param {boolean} [active = false]
+   * @returns {this}
+   */
+  formatValueByType(active = false) {
+    this.#printValueFormatByType = active;
     return this;
   }
 
-  supportQuotedField(active) {
-    this.isSupportQuotedField = active;
+  /**
+   * Makes parser aware of quoted fields
+   * @param {boolean} [active = false]
+   * @returns {this}
+   */
+  setSupportQuotedField(active = false) {
+    this.#supportQuotedField = active;
     return this;
   }
 
-  fieldDelimiter(delimiter) {
-    this.delimiter = delimiter;
-    return this;
-  }
-
-  trimHeaderFieldWhiteSpace(active) {
-    this.isTrimHeaderFieldWhiteSpace = active;
-    return this;
-  }
-
-  indexHeader(indexHeader) {
-    if(isNaN(indexHeader)){
-        throw new Error('The index Header must be a Number!');
+  /**
+   * Defines the field delimiter which will be used to split the fields
+   * @param {string} [delimiter=';']
+   * @return {this}
+   * @throws {TypeError} when the delimiter is not a string or empty
+   */
+  setDelimiter(delimiter = ';') {
+    if (typeof delimiter !== 'string' || delimiter.length === 0) {
+      throw new TypeError('The delimiter must be a non empty String!');
     }
-    this.indexHeader = indexHeader;
+    this.#delimiter = delimiter;
     return this;
   }
 
-
-  parseSubArray(delimiter = '*',separator = ',') {
-    this.parseSubArrayDelimiter = delimiter;
-    this.parseSubArraySeparator = separator;
-  }
-
-  encoding(encoding){
-    this.encoding = encoding;
+  /**
+   * Configures if the content of the Header Fields is trimmed including the
+   * white spaces, e.g. "My Name" -> "MyName"
+   * @param {boolean} [active = false]
+   * @return {this}
+   */
+  setShouldtrimHeaderFieldWhiteSpace(active = false) {
+    this.#shouldTrimHeaderFieldWhiteSpace = active;
     return this;
   }
 
+  /**
+   * Defines the index where the header is defined
+   * @param {number} indexHeader
+   * @return {this}
+   * @throws {TypeError} when the indexHeader is not a number
+   */
+  setIndexHeader(indexHeader) {
+    if (isNaN(indexHeader)) {
+      throw new TypeError('The index Header must be a Number!');
+    }
+    this.#indexHeader = indexHeader;
+    return this;
+  }
+
+  /**
+   * Defines how to match and parse a sub array
+   * @param {string} [delimiter='*'] 
+   * @param {string} [separator=','] 
+   */
+  parseSubArray(delimiter = '*', separator = ',') {
+    this.#parseSubArrays = true;
+    this.#parseSubArrayDelimiter = delimiter;
+    this.#parseSubArraySeparator = separator;
+  }
+
+  /**
+   * Defines the file encoding
+   * @param {BufferEncoding} encoding 
+   * @return {this}
+   */
+  setEncoding(encoding = 'utf8') {
+    this.#encoding = encoding;
+    return this;
+  }
+
+  /**
+   * Parses .csv file and put its content into a file in json format.
+   * @param {string} fileInputName
+   * @param {string} fileOutputName
+   * @throws {Error} when input or output file name is not defined
+   * @return {void}
+   */
   generateJsonFileFromCsv(fileInputName, fileOutputName) {
-    let jsonStringified = this.getJsonFromCsvStringified(fileInputName);
+    if (!fileInputName) {
+      throw new Error("inputFileName is not defined.");
+    }
+    if (!fileOutputName) {
+      throw new Error("outputFileName is not defined.");
+    }
+    let jsonStringified = this.getJsonStringifiedFromCsv(fileInputName);
     fileUtils.writeFile(jsonStringified, fileOutputName);
   }
 
-  getJsonFromCsvStringified(fileInputName) {
+  /**
+   * Parses .csv file and converts its content into a string in json format.
+   * @param {string} fileInputName 
+   * @returns {string}
+   */
+  getJsonStringifiedFromCsv(fileInputName) {
     let json = this.getJsonFromCsv(fileInputName);
     let jsonStringified = JSON.stringify(json, undefined, 1);
     jsonUtils.validateJson(jsonStringified);
     return jsonStringified;
   }
 
+  /**
+   * Parses .csv file and put its content into an Array of Object in json format.
+   * @param {string} fileInputName
+   * @return {Array} Array of Object in json format
+   * @throws {Error} when input file name is not defined
+   */
   getJsonFromCsv(fileInputName) {
-    let parsedCsv = fileUtils.readFile(fileInputName, this.encoding);
-    return this.csvToJson(parsedCsv);
-  }
-
-  csvStringToJson(csvString) {
-    return this.csvToJson(csvString);
-  }
-
-  csvToJson(parsedCsv) {
-  	this.validateInputConfig();
-    let lines = parsedCsv.split(newLine);
-    let fieldDelimiter = this.getFieldDelimiter();
-    let index = this.getIndexHeader();
-    let headers;
-    
-    if(this.isSupportQuotedField){
-      headers = this.split(lines[index]);
-    } else {
-      headers = lines[index].split(fieldDelimiter);
+    if (!fileInputName) {
+      throw new Error("inputFileName is not defined.");
     }
-    
-    while(!stringUtils.hasContent(headers) && index <= lines.length){
-        index = index + 1;
-        headers = lines[index].split(fieldDelimiter);
+    let parsedCsv = fileUtils.readFile(fileInputName, this.#encoding);
+    return this.#parse(parsedCsv);
+  }
+
+  /**
+   * @param {string} csvString 
+   * @returns {Array<object>}
+   */
+  csvStringToJson(csvString) {
+    return this.#parse(csvString);
+  }
+
+  /**
+   * @param {string} parsedCsv 
+   * @returns {Array<object>}
+   */
+  #parse(parsedCsv) {
+    this.#validateInputConfig();
+    let lines = parsedCsv.split(newLineRegex);
+    const delimiter = this.#delimiter;
+    let index = this.#indexHeader;
+
+    /** @type {CSVHeaders} */
+    let headers = this.#split(lines[index]);
+
+    // Skip empty lines until we find a header
+    while (!stringUtils.hasContent(headers) && index <= lines.length) {
+      index = index + 1;
+      headers = lines[index].split(delimiter);
+    }
+
+    for (let i = 0; i < headers.length; i++) {
+      headers[i] = stringUtils.trimPropertyName(this.#shouldTrimHeaderFieldWhiteSpace, headers[i]);
+      this.#validateHeader(headers[i]);
     }
 
     let jsonResult = [];
     for (let i = (index + 1); i < lines.length; i++) {
-        let currentLine;
-        if(this.isSupportQuotedField){
-            currentLine = this.split(lines[i]);
-        }
-        else{
-            currentLine = lines[i].split(fieldDelimiter);
-        }
-        if (stringUtils.hasContent(currentLine)) {
-            jsonResult.push(this.buildJsonResult(headers, currentLine));
-        }
-       }
+      const currentLine = this.#split(lines[i]);
+      if (stringUtils.hasContent(currentLine)) {
+        jsonResult.push(this.buildJsonResult(headers, currentLine));
+      }
+    }
     return jsonResult;
   }
 
-  getFieldDelimiter() {
-    if (this.delimiter) {
-      return this.delimiter;
-    }
-    return defaultFieldDelimiter;
-  }
-
-  getIndexHeader(){
-    if(this.indexHeader !== null && !isNaN(this.indexHeader)){
-        return this.indexHeader;
-    }
-    return 0;
-  }
-
+  /**
+   * @param {CSVHeaders} headers 
+   * @param {Array<string>} currentLine 
+   * @returns {object}
+   */
   buildJsonResult(headers, currentLine) {
-    let jsonObject = {};
-    for (let j = 0; j < headers.length; j++) {
-      let propertyName = stringUtils.trimPropertyName(this.isTrimHeaderFieldWhiteSpace, headers[j]);
-      let value = currentLine[j];
-
-      if(this.isParseSubArray(value)){
-        value = this.buildJsonSubArray(value);
+    const jsonObject = {};
+    for (let i = 0; i < headers.length; i++) {
+      if (this.#shouldParseValueAsSubArray(currentLine[i])) {
+        jsonObject[headers[i]] = this.#parseValueAsSubArray(currentLine[i]);
+      } else if (this.#printValueFormatByType) {
+        jsonObject[headers[i]] = stringUtils.getValueFormatByType(currentLine[i]);
+      } else {
+        jsonObject[headers[i]] = currentLine[i];
       }
-
-      if (this.printValueFormatByType && !Array.isArray(value)) {
-        value = stringUtils.getValueFormatByType(currentLine[j]);
-      }
-
-      jsonObject[propertyName] = value;
     }
     return jsonObject;
   }
 
-  buildJsonSubArray(value) {
+  /**
+   * @param {string} value 
+   * @returns {Array}
+   */
+  #parseValueAsSubArray(value) {
     let extractedValues = value.substring(
-        value.indexOf(this.parseSubArrayDelimiter) + 1,
-        value.lastIndexOf(this.parseSubArrayDelimiter)
+      value.indexOf(this.#parseSubArrayDelimiter) + 1,
+      value.lastIndexOf(this.#parseSubArrayDelimiter)
+    ).trim();
+    /** @type {*} */
+    const result = extractedValues.split(this.#parseSubArraySeparator);
+    if (this.#printValueFormatByType) {
+      for (let i = 0; i < result.length; i++) {
+        result[i] = stringUtils.getValueFormatByType(result[i]);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * @param {string} value 
+   * @returns {boolean}
+   */
+  #shouldParseValueAsSubArray(value) {
+    return (
+      this.#parseSubArrays &&
+      value !== '' && 
+      value.indexOf(this.#parseSubArrayDelimiter) === 0 &&
+      value.lastIndexOf(this.#parseSubArrayDelimiter) === (value.length - 1)
     );
-    extractedValues.trim();
-    value = extractedValues.split(this.parseSubArraySeparator);
-    if(this.printValueFormatByType){
-      for(let i=0; i < value.length; i++){
-        value[i] = stringUtils.getValueFormatByType(value[i]);
+  }
+
+  /**
+   * Validates the input configuration
+   * @throws {Error} when the configuration is not valid
+   */
+  #validateInputConfig() {
+    if (this.#supportQuotedField) {
+      if (this.#delimiter === '"') {
+        throw new Error('When SupportQuotedFields is enabled you cannot defined the field delimiter as quote -> ["]');
+      }
+      if (this.#parseSubArraySeparator === '"') {
+        throw new Error('When SupportQuotedFields is enabled you cannot defined the field parseSubArraySeparator as quote -> ["]');
+      }
+      if (this.#parseSubArrayDelimiter === '"') {
+        throw new Error('When SupportQuotedFields is enabled you cannot defined the field parseSubArrayDelimiter as quote -> ["]');
       }
     }
-    return value;
   }
 
-  isParseSubArray(value){
-    if(this.parseSubArrayDelimiter){
-      if (value && (value.indexOf(this.parseSubArrayDelimiter) === 0 && value.lastIndexOf(this.parseSubArrayDelimiter) === (value.length - 1))) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  validateInputConfig(){
-  	if(this.isSupportQuotedField) {
-  	 	if(this.getFieldDelimiter() === '"'){
-  	 		throw new Error('When SupportQuotedFields is enabled you cannot defined the field delimiter as quote -> ["]');
-  	 	}
-  	 	if(this.parseSubArraySeparator === '"'){
-  	 		throw new Error('When SupportQuotedFields is enabled you cannot defined the field parseSubArraySeparator as quote -> ["]');
-  	 	}
-  	 	if(this.parseSubArrayDelimiter === '"'){
-  	 		throw new Error('When SupportQuotedFields is enabled you cannot defined the field parseSubArrayDelimiter as quote -> ["]');
-  	 	}
-  	}
-  }
-
-  hasQuotes(line) {
+  /**
+   * Checks if the line contains doublequotes
+   * @param {string} line 
+   * @returns {boolean}
+   */
+  #hasQuotes(line) {
     return line.includes('"');
   }
 
-  split(line) {
-    if(line.length == 0){
+  /**
+   * @param {string} header
+   */
+  #validateHeader(header) {
+    if (
+      header === 'prototype' ||
+      header === '__proto__' ||
+      header === 'constructor'
+    ) {
+      throw new Error(`The header contains a forbidden field name: ${header}`);
+    }
+  }
+
+  /**
+   * Splits a line into sub values taking care of quoted fields
+   * @param {string} line 
+   * @returns {Array<string>}
+   * @throws {SyntaxError} when the line contains mismatched quotes
+   */
+  #split(line) {
+    if (line.length === 0) {
       return [];
     }
-    let delim = this.getFieldDelimiter();
-    let subSplits = [''];
-    if (this.hasQuotes(line)) {
-        let chars = line.split('');
+    
+    const delimiter = this.#delimiter;
 
-        let subIndex = 0;
-        let startQuote = false;
-        let isDouble = false;
-        chars.forEach((c, i, arr) => {
-            if (isDouble) { //when run into double just pop it into current and move on
-                subSplits[subIndex] += c;
-                isDouble = false;
-                return;
-            }
+    if (this.#supportQuotedField && this.#hasQuotes(line)) {
+      const chars = line.split('');
+      const entry = [''];
+      let subIndex = 0;
+      let startQuote = false;
+      let isDouble = false;
+      let c = '';
 
-            if (c != '"' && c != delim ) {
-                subSplits[subIndex] += c;
-            } else if(c == delim && startQuote){
-                subSplits[subIndex] += c;
-            } else if( c == delim ){
-                subIndex++
-                subSplits[subIndex] = '';
-                return;
-            } else {
-                if (arr[i + 1] === '"') {
-                    //Double quote
-                    isDouble = true;
-                    //subSplits[subIndex] += c; //Skip because this is escaped quote
-                } else {
-                    if (!startQuote) {
-                        startQuote = true;
-                        //subSplits[subIndex] += c; //Skip because we don't want quotes wrapping value
-                    } else {
-                        //end
-                        startQuote = false;
-                        //subSplits[subIndex] += c; //Skip because we don't want quotes wrapping value
-                    }
-                }
-            }
-        });
-        if(startQuote){
-            throw new Error('Row contains mismatched quotes!');
+      for (let i = 0; i < chars.length; i++) {
+        c = chars[i];
+        if (isDouble) { //when run into double just pop it into current and move on
+          entry[subIndex] += c;
+          isDouble = false;
+          continue;
         }
-        return subSplits;
+
+        if (c !== '"' && c !== delimiter) {
+          entry[subIndex] += c;
+        } else if (c === delimiter && startQuote) {
+          entry[subIndex] += c;
+        } else if (c === delimiter) {
+          subIndex++
+          entry[subIndex] = '';
+          continue;
+        } else {
+          if (chars[i + 1] === '"') {
+            //Double quote
+            isDouble = true;
+            //subSplits[subIndex] += c; //Skip because this is escaped quote
+          } else {
+            if (!startQuote) {
+              startQuote = true;
+              //subSplits[subIndex] += c; //Skip because we don't want quotes wrapping value
+            } else {
+              //end
+              startQuote = false;
+              //subSplits[subIndex] += c; //Skip because we don't want quotes wrapping value
+            }
+          }
+        }
+      }
+      if (startQuote) {
+        throw new SyntaxError('Row contains mismatched quotes!');
+      }
+      return entry;
     } else {
-        return line.split(delim);
+      return line.split(delimiter);
     }
   }
 }
