@@ -19,16 +19,16 @@ describe('API testing', function () {
                 zip: "123",
                 registered: "true"
             },
-                {
-                    firstName: 'Norah',
-                    lastName: 'Raison',
-                    email: 'nraison1@wired.com',
-                    gender: 'Female',
-                    age: "32.5",
-                    birth: '10.05.2000',
-                    zip: '',
-                    registered: "false"
-                }];
+            {
+                firstName: 'Norah',
+                lastName: 'Raison',
+                email: 'nraison1@wired.com',
+                gender: 'Female',
+                age: "32.5",
+                birth: '10.05.2000',
+                zip: '',
+                registered: "false"
+            }];
         });
         it('should return json array', function () {
             //given
@@ -42,13 +42,13 @@ describe('API testing', function () {
         });
 
         afterEach(function () {
-           index.formatValueByType(false);
+            index.formatValueByType(false);
         });
 
 
         it('should return json array that contains the same property of the csv header', function () {
             //given
-            let headers = ['firstName', 'lastName', 'email', 'gender', 'age', 'birth','zip','registered'];
+            let headers = ['firstName', 'lastName', 'email', 'gender', 'age', 'birth', 'zip', 'registered'];
 
             //when
             let result = index.getJsonFromCsv(fileInputName);
@@ -63,7 +63,7 @@ describe('API testing', function () {
         it('should not remove empty spaces from header field', function () {
             //given
             let headers = ['first Name', 'last Name', 'email', 'gender', 'age', 'birth'];
-            
+
             //when
             let result = index.trimHeaderFieldWhiteSpace(false)
                 .getJsonFromCsv('test/resource/input_header_with_empty_spaces.csv');
@@ -72,14 +72,14 @@ describe('API testing', function () {
             const resultHeaders = Object.keys(result[0]);
             expect(result).not.toBeNull();
             expect(resultHeaders).toEqual(headers);
-    
+
         });
 
 
         it('should remove empty spaces from header field', function () {
             //given
             let headers = ['firstName', 'lastName', 'email', 'gender', 'age', 'birth'];
-            
+
             //when
             let result = index.trimHeaderFieldWhiteSpace(true)
                 .getJsonFromCsv('test/resource/input_header_with_empty_spaces.csv');
@@ -87,7 +87,7 @@ describe('API testing', function () {
             const resultHeaders = Object.keys(result[0]);
             expect(result).not.toBeNull();
             expect(resultHeaders).toEqual(headers);
-    
+
         });
 
 
@@ -112,18 +112,18 @@ describe('API testing', function () {
                 gender: 'Male',
                 age: "96",
                 birth: '10.02.1965',
-                sons: ['anto','diego','hamsik']
-            },{
+                sons: ['anto', 'diego', 'hamsik']
+            }, {
                 firstName: 'Constantin',
                 lastName: 'Langsdon',
                 email: 'clangsdon0@hc360.com',
                 gender: 'Male',
                 age: "96",
                 birth: '10.02.1965',
-                sons: ['12','10','13']
+                sons: ['12', '10', '13']
             }];
             //when
-            let result = index.parseSubArray("*",',').fieldDelimiter(";").getJsonFromCsv('test/resource/input_example_sub_array.csv');
+            let result = index.parseSubArray("*", ',').fieldDelimiter(";").getJsonFromCsv('test/resource/input_example_sub_array.csv');
             //then
             expect(result.length).toEqual(2);
             expect(result[0].sons).toEqual(expectedResult[0].sons);
@@ -141,18 +141,18 @@ describe('API testing', function () {
                 gender: 'Male',
                 age: "96",
                 birth: '10.02.1965',
-                sons: ['anto','diego','hamsik']
-            },{
+                sons: ['anto', 'diego', 'hamsik']
+            }, {
                 firstName: 'Constantin',
                 lastName: 'Langsdon',
                 email: 'clangsdon0@hc360.com',
                 gender: 'Male',
                 age: "96",
                 birth: '10.02.1965',
-                sons: [12,10,13]
+                sons: [12, 10, 13]
             }];
             //when
-            let result = index.parseSubArray("*",',').fieldDelimiter(";").formatValueByType().getJsonFromCsv('test/resource/input_example_sub_array.csv');
+            let result = index.parseSubArray("*", ',').fieldDelimiter(";").formatValueByType().getJsonFromCsv('test/resource/input_example_sub_array.csv');
             //then
             expect(result.length).toEqual(2);
             expect(result[0].sons).toEqual(expectedResult[0].sons);
@@ -199,48 +199,48 @@ describe('API testing', function () {
     });
 
 
-	describe('Input config testing', function () {
-		beforeEach(function () {
-			index.supportQuotedField(false);
-			index.fieldDelimiter(";")
-		});
+    describe('Input config testing', function () {
+        beforeEach(function () {
+            index.supportQuotedField(false);
+            index.fieldDelimiter(";")
+        });
 
-		it('should throw error when isSupportQuotedField active and fieldDelimiter is equal to "', function () {
-        	//given
+        it('should throw error when isSupportQuotedField active and fieldDelimiter is equal to "', function () {
+            //given
 
             //when
-            expect(function(){
+            expect(function () {
                 index.supportQuotedField(true)
-                		.fieldDelimiter('"')
-                    	.getJsonFromCsv(fileInputName);
+                    .fieldDelimiter('"')
+                    .getJsonFromCsv(fileInputName);
             }).toThrow('When SupportQuotedFields is enabled you cannot defined the field delimiter as quote -> ["]');
 
         });
-		it('should throw error when parseSubArrayDelimiter active and fieldDelimiter is equal to "', function () {
-        	//given
+        it('should throw error when parseSubArrayDelimiter active and fieldDelimiter is equal to "', function () {
+            //given
 
             //when
-            expect(function(){
+            expect(function () {
                 index.supportQuotedField(true)
-                		.parseSubArray('"', ',')
-                    	.getJsonFromCsv(fileInputName);
+                    .parseSubArray('"', ',')
+                    .getJsonFromCsv(fileInputName);
             }).toThrow('When SupportQuotedFields is enabled you cannot defined the field parseSubArrayDelimiter as quote -> ["]');
 
         });
 
-		it('should throw error when parseSubArraySeparator active and parseSubArraySeparator is equal to "', function () {
-        	//given
+        it('should throw error when parseSubArraySeparator active and parseSubArraySeparator is equal to "', function () {
+            //given
 
             //when
-            expect(function(){
+            expect(function () {
                 index.supportQuotedField(true)
-                		.parseSubArray('*', '"')
-                    	.getJsonFromCsv(fileInputName);
+                    .parseSubArray('*', '"')
+                    .getJsonFromCsv(fileInputName);
             }).toThrow('When SupportQuotedFields is enabled you cannot defined the field parseSubArraySeparator as quote -> ["]');
 
         });
 
-	});
+    });
 
 
 });

@@ -3,13 +3,13 @@
 let csvToJson = new (require("./src/csv-to-json.js"))();
 
 const encodingOps = {
-    utf8: 'utf8',
-    ucs2: 'ucs2',
-    utf16le: 'utf16le',
-    latin1: 'latin1',
-    ascii: 'ascii',
-    base64: 'base64',
-    hex: 'hex'
+  utf8: 'utf8',
+  ucs2: 'ucs2',
+  utf16le: 'utf16le',
+  latin1: 'latin1',
+  ascii: 'ascii',
+  base64: 'base64',
+  hex: 'hex'
 };
 
 /**
@@ -129,7 +129,7 @@ exports.hexEncoding = function () {
  * @param {outputFileName} path/filename
  *
  */
-exports.generateJsonFileFromCsv = function(inputFileName, outputFileName) {
+exports.generateJsonFileFromCsv = function (inputFileName, outputFileName) {
   if (!inputFileName) {
     throw new Error("inputFileName is not defined!!!");
   }
@@ -145,14 +145,14 @@ exports.generateJsonFileFromCsv = function(inputFileName, outputFileName) {
  * @return {Array} Array of Object in json format
  *
  */
-exports.getJsonFromCsv = function(inputFileName) {
+exports.getJsonFromCsv = function (inputFileName) {
   if (!inputFileName) {
     throw new Error("inputFileName is not defined!!!");
   }
   return csvToJson.getJsonFromCsv(inputFileName);
 };
 
-exports.csvStringToJson = function(csvString) {
+exports.csvStringToJson = function (csvString) {
   return csvToJson.csvStringToJson(csvString);
 };
 
@@ -163,6 +163,6 @@ exports.csvStringToJson = function(csvString) {
  *
  * @deprecated Use generateJsonFileFromCsv()
  */
-exports.jsonToCsv = function(inputFileName, outputFileName) {
+exports.jsonToCsv = function (inputFileName, outputFileName) {
   csvToJson.generateJsonFileFromCsv(inputFileName, outputFileName);
 };
