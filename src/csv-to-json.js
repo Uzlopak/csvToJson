@@ -448,4 +448,6 @@ class CsvToJson {
   }
 }
 
-module.exports = new CsvToJson();
+module.exports = CsvToJson;
+module.exports.default = CsvToJson;
+module.exports.CsvToJson = CsvToJson;

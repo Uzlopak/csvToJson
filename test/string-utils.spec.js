@@ -1,6 +1,6 @@
 'use strict';
 
-let stringUtils = require('../src/util/stringUtils');
+const CsvToJson = require('../src/csv-to-json.js');
 
 describe('StringUtils class testing', function () {
 
@@ -8,24 +8,26 @@ describe('StringUtils class testing', function () {
 
         it('Should trim input value with empty spaces', function () {
             //given
-            let value = ' value ';
+            let value = ' val ue \n bla ';
 
             //when
-            let result = stringUtils.trimPropertyName(true,value);
+            let result = new CsvToJson({ trimHeaderFieldWhiteSpace: true })
+                .csvStringToJson(value);
 
             //then
-            expect(result).toEqual('value');
+            expect(Object.keys(result[0])[0]).toEqual('value');
         });
 
         it('Should trim input value without empty spaces', function () {
             //given
-            let value = ' val ue ';
+            let value = ' val ue \n bla ';
 
             //when
-            let result = stringUtils.trimPropertyName(false,value);
+            let result = new CsvToJson({ trimHeaderFieldWhiteSpace: false })
+                .csvStringToJson(value);
 
             //then
-            expect(result).toEqual('val ue');
+            expect(Object.keys(result[0])[0]).toEqual('val ue');
         });
     });
 
@@ -35,7 +37,8 @@ describe('StringUtils class testing', function () {
             let value = '23';
 
             //when
-            let result = stringUtils.getValueFormatByType(value);
+            let result = new CsvToJson({ printValueFormatByType: true })
+                .csvStringToJson(`key\n${value}`)[0].key;
 
             //then
             expect(typeof result).toEqual('number');
@@ -47,7 +50,8 @@ describe('StringUtils class testing', function () {
             let value = '0.23';
 
             //when
-            let result = stringUtils.getValueFormatByType(value);
+            let result = new CsvToJson({ printValueFormatByType: true })
+                .csvStringToJson(`key\n${value}`)[0].key;
 
             //then
             expect(typeof result).toEqual('number');
@@ -59,7 +63,8 @@ describe('StringUtils class testing', function () {
             let value = 'value';
 
             //when
-            let result = stringUtils.getValueFormatByType(value);
+            let result = new CsvToJson({ printValueFormatByType: true })
+                .csvStringToJson(`key\n${value}`)[0].key;
 
             //then
             expect(typeof result).toEqual('string');
@@ -71,7 +76,8 @@ describe('StringUtils class testing', function () {
             let value = '11value';
 
             //when
-            let result = stringUtils.getValueFormatByType(value);
+            let result = new CsvToJson({ printValueFormatByType: true })
+                .csvStringToJson(`key\n${value}`)[0].key;
 
             //then
             expect(typeof result).toEqual('string');
@@ -83,7 +89,8 @@ describe('StringUtils class testing', function () {
             let value;
 
             //when
-            let result = stringUtils.getValueFormatByType(value);
+            let result = new CsvToJson({ delimiter: ',', printValueFormatByType: true })
+                .csvStringToJson(`key1,key2\n,value2`)[0].key1;
 
             //then
             expect(typeof result).toEqual('string');
@@ -95,7 +102,8 @@ describe('StringUtils class testing', function () {
             let value = '';
 
             //when
-            let result = stringUtils.getValueFormatByType(value);
+            let result = new CsvToJson({ delimiter: ',', printValueFormatByType: true })
+                .csvStringToJson(`key1, key2\n${value},value`)[0].key1;
 
             //then
             expect(typeof result).toEqual('string');
@@ -107,7 +115,8 @@ describe('StringUtils class testing', function () {
             let value = "true";
 
             //when
-            let result = stringUtils.getValueFormatByType(value);
+            let result = new CsvToJson({ printValueFormatByType: true })
+                .csvStringToJson(`key\n${value}`)[0].key;
 
             //then
             expect(typeof result).toEqual('boolean');
@@ -119,7 +128,8 @@ describe('StringUtils class testing', function () {
             let value = "false";
 
             //when
-            let result = stringUtils.getValueFormatByType(value);
+            let result = new CsvToJson({ printValueFormatByType: true })
+                .csvStringToJson(`key\n${value}`)[0].key;
 
             //then
             expect(typeof result).toEqual('boolean');
