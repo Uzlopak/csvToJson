@@ -1,6 +1,7 @@
 'use strict';
-let index = require('../index');
 
+const { describe, it, beforeEach, afterEach } = require('./test');
+let index = require('../index');
 
 let fileInputName = 'test/resource/input.csv';
 
@@ -30,54 +31,41 @@ describe('API testing', function () {
                 registered: "false"
             }];
         });
-        it('should return json array', function () {
-            //given
 
-            //when
+        it('should return json array', function (t) {
             let result = index.getJsonFromCsv(fileInputName);
 
-            //then
-            expect(result.length).toEqual(expectedJson.length);
-            expect(result).toEqual(expectedJson);
+            t.assert.strictEqual(result.length, expectedJson.length);
+            t.assert.deepStrictEqual(result, expectedJson);
         });
 
         afterEach(function () {
             index.formatValueByType(false);
         });
 
-
-        it('should return json array that contains the same property of the csv header', function () {
-            //given
+        it('should return json array that contains the same property of the csv header', function (t) {
             let headers = ['firstName', 'lastName', 'email', 'gender', 'age', 'birth', 'zip', 'registered'];
 
-            //when
             let result = index.getJsonFromCsv(fileInputName);
 
-            //then
             const resultHeaders = Object.keys(result[0]);
-            expect(result).not.toBeNull();
-            expect(resultHeaders).toEqual(headers);
+            t.assert.ok(result !== null);
+            t.assert.deepStrictEqual(resultHeaders, headers);
         });
 
-
-        it('should not remove empty spaces from header field', function () {
-            //given
+        it('should not remove empty spaces from header field', function (t) {
             let headers = ['first Name', 'last Name', 'email', 'gender', 'age', 'birth'];
 
             //when
             let result = index.trimHeaderFieldWhiteSpace(false)
                 .getJsonFromCsv('test/resource/input_header_with_empty_spaces.csv');
 
-
             const resultHeaders = Object.keys(result[0]);
-            expect(result).not.toBeNull();
-            expect(resultHeaders).toEqual(headers);
-
+            t.assert.ok(result !== null);
+            t.assert.deepStrictEqual(resultHeaders, headers);
         });
 
-
-        it('should remove empty spaces from header field', function () {
-            //given
+        it('should remove empty spaces from header field', function (t) {
             let headers = ['firstName', 'lastName', 'email', 'gender', 'age', 'birth'];
 
             //when
@@ -85,26 +73,18 @@ describe('API testing', function () {
                 .getJsonFromCsv('test/resource/input_header_with_empty_spaces.csv');
 
             const resultHeaders = Object.keys(result[0]);
-            expect(result).not.toBeNull();
-            expect(resultHeaders).toEqual(headers);
-
+            t.assert.ok(result !== null);
+            t.assert.deepStrictEqual(resultHeaders, headers);
         });
 
-
-        it('should return json array from csv with tilde as field delimiter', function () {
-            //given
-
-            //when
+        it('should return json array from csv with tilde as field delimiter', function (t) {
             let result = index.fieldDelimiter('~').getJsonFromCsv('test/resource/input_tilde_delimiter.csv');
 
-            //then
-            expect(result.length).toEqual(expectedJson.length);
-            expect(result).toEqual(expectedJson);
+            t.assert.strictEqual(result.length, expectedJson.length);
+            t.assert.deepStrictEqual(result, expectedJson);
         });
 
-        it('should return json array with subArray', function () {
-            //given
-
+        it('should return json array with subArray', function (t) {
             let expectedResult = [{
                 firstName: 'Constantin',
                 lastName: 'Langsdon',
@@ -122,18 +102,16 @@ describe('API testing', function () {
                 birth: '10.02.1965',
                 sons: ['12', '10', '13']
             }];
+
             //when
             let result = index.parseSubArray("*", ',').fieldDelimiter(";").getJsonFromCsv('test/resource/input_example_sub_array.csv');
-            //then
-            expect(result.length).toEqual(2);
-            expect(result[0].sons).toEqual(expectedResult[0].sons);
-            expect(result[1].sons).toEqual(expectedResult[1].sons);
 
+            t.assert.strictEqual(result.length, 2);
+            t.assert.deepStrictEqual(result[0].sons, expectedResult[0].sons);
+            t.assert.deepStrictEqual(result[1].sons, expectedResult[1].sons);
         });
 
-        it('should return json array with subArray both formatted by type', function () {
-            //given
-
+        it('should return json array with subArray both formatted by type', function (t) {
             let expectedResult = [{
                 firstName: 'Constantin',
                 lastName: 'Langsdon',
@@ -151,96 +129,70 @@ describe('API testing', function () {
                 birth: '10.02.1965',
                 sons: [12, 10, 13]
             }];
-            //when
+            //when            
             let result = index.parseSubArray("*", ',').fieldDelimiter(";").formatValueByType().getJsonFromCsv('test/resource/input_example_sub_array.csv');
             //then
-            expect(result.length).toEqual(2);
-            expect(result[0].sons).toEqual(expectedResult[0].sons);
-
+            t.assert.strictEqual(result.length, 2);
+            t.assert.deepStrictEqual(result[0].sons, expectedResult[0].sons);
         });
 
-        it('should return json array with value formatted by type', function () {
-            //given
+        it('should return json array with value formatted by type', function (t) {
             expectedJson[0].age = 96;
             expectedJson[0].zip = 123;
             expectedJson[1].age = 32.5;
             expectedJson[0].registered = true;
             expectedJson[1].registered = false;
 
-            //when
             let result = index.formatValueByType().fieldDelimiter(";").getJsonFromCsv(fileInputName);
 
-            //then
-            expect(result.length).toEqual(expectedJson.length);
-            expect(result).toEqual(expectedJson);
+            t.assert.strictEqual(result.length, expectedJson.length);
+            t.assert.deepStrictEqual(result, expectedJson);
         });
 
-        it('should return json array when file contains empty rows', function () {
-            //given
-
-            //when
+        it('should return json array when file contains empty rows', function (t) {
             let result = index.fieldDelimiter(";").getJsonFromCsv('test/resource/input_with_empty_row_at_the_beginning.csv');
 
-            //then
-            expect(result.length).toEqual(expectedJson.length);
-            expect(result).toEqual(expectedJson);
+            t.assert.strictEqual(result.length, expectedJson.length);
+            t.assert.deepStrictEqual(result, expectedJson);
         });
 
-        it('should return json array header is not the first line', function () {
-            //given
-
-            //when
+        it('should return json array header is not the first line', function (t) {
             let result = index.fieldDelimiter(";").indexHeader(5).getJsonFromCsv('test/resource/input_with_header_not_first_line.csv');
 
-            //then
-            expect(result.length).toEqual(expectedJson.length);
-            expect(result).toEqual(expectedJson);
+            t.assert.strictEqual(result.length, expectedJson.length);
+            t.assert.deepStrictEqual(result, expectedJson);
         });
     });
-
 
     describe('Input config testing', function () {
         beforeEach(function () {
             index.supportQuotedField(false);
-            index.fieldDelimiter(";")
+            index.fieldDelimiter(";");
         });
 
-        it('should throw error when isSupportQuotedField active and fieldDelimiter is equal to "', function () {
-            //given
-
-            //when
-            expect(function () {
+        it('should throw error when isSupportQuotedField active and fieldDelimiter is equal to "', function (t) {
+            t.assert.throws(() => {
                 index.supportQuotedField(true)
                     .fieldDelimiter('"')
                     .getJsonFromCsv(fileInputName);
-            }).toThrow('When SupportQuotedFields is enabled you cannot defined the field delimiter as quote -> ["]');
-
+            }, /When SupportQuotedFields is enabled you cannot defined the field delimiter as quote -> \["]/);
         });
-        it('should throw error when parseSubArrayDelimiter active and fieldDelimiter is equal to "', function () {
-            //given
 
-            //when
-            expect(function () {
+        it('should throw error when parseSubArrayDelimiter active and fieldDelimiter is equal to "', function (t) {
+            t.assert.throws(() => {
                 index.supportQuotedField(true)
                     .parseSubArray('"', ',')
                     .getJsonFromCsv(fileInputName);
-            }).toThrow('When SupportQuotedFields is enabled you cannot defined the field parseSubArrayDelimiter as quote -> ["]');
-
+            }, /When SupportQuotedFields is enabled you cannot defined the field parseSubArrayDelimiter as quote -> \["]/);
         });
 
-        it('should throw error when parseSubArraySeparator active and parseSubArraySeparator is equal to "', function () {
-            //given
-
-            //when
-            expect(function () {
+        it('should throw error when parseSubArraySeparator active and parseSubArraySeparator is equal to "', function (t) {
+            t.assert.throws(() => {
                 index.supportQuotedField(true)
                     .parseSubArray('*', '"')
                     .getJsonFromCsv(fileInputName);
-            }).toThrow('When SupportQuotedFields is enabled you cannot defined the field parseSubArraySeparator as quote -> ["]');
-
+            }, /When SupportQuotedFields is enabled you cannot defined the field parseSubArraySeparator as quote -> \["]/);
         });
 
     });
-
-
 });
